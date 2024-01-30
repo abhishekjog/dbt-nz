@@ -152,16 +152,17 @@ class NetezzaConnectionManager(connection_cls):
 
     @classmethod
     def get_response(cls, cursor) -> AdapterResponse:
+        return 0
         """
         Gets a cursor object and returns adapter-specific information
         about the last executed command generally a AdapterResponse object
         that has items such as code, rows_affected, etc. can also just be a string ex. "OK"
         if your cursor does not offer rich metadata.
-        """
+        
         if not len(cursor.messages):
             return AdapterResponse("OK", rows_affected=cursor.rowcount)
         last_code, last_message = cursor.messages[-1]
-        return AdapterResponse(last_message, last_code, cursor.rowcount)
+        return AdapterResponse(last_message, last_code, cursor.rowcount)"""
 
     # Override to prevent error when calling execute without bindings
     def add_query(
@@ -195,8 +196,8 @@ class NetezzaConnectionManager(connection_cls):
 
             # Get the result of the first non-empty result set (if any)
             while cursor.description is None:
-                if not cursor.nextset():
-                    break
+                #if not cursor.nextset():
+                break
             fire_event(
                 SQLQueryStatus(
                     status=str(self.get_response(cursor)),
@@ -230,12 +231,12 @@ class NetezzaConnectionManager(connection_cls):
         if fetch:
             # Get the result of the first non-empty result set (if any)
             while cursor.description is None:
-                if not cursor.nextset():
-                    break
+                #if not cursor.nextset():
+                break
             table = self.get_result_from_cursor(cursor)
         else:
             table = agate_helper.empty_table()
         # Step through all result sets so we process all errors
-        while cursor.nextset():
-            pass
+        #while cursor.nextset():
+         #   pass
         return response, table
