@@ -1,4 +1,3 @@
-
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Optional, Tuple, Any
@@ -16,7 +15,6 @@ from dbt.events.types import ConnectionUsed, SQLQuery, SQLQueryStatus
 from dbt.contracts.connection import Connection, AdapterResponse
 from dbt.helper_types import Port
 import nzpy
-
 
 
 logger = AdapterLogger("Netezza")
@@ -154,7 +152,13 @@ class NetezzaConnectionManager(connection_cls):
     
     @classmethod
     def get_response(cls, cursor) -> AdapterResponse: 
-        return 0
+        """
+        Gets a cursor object and returns adapter-specific information
+        about the last executed command generally a AdapterResponse object
+        that has items such as code, rows_affected, etc. can also just be a string ex. "OK"
+        if your cursor does not offer rich metadata.
+        """
+        return AdapterResponse("OK", rows_affected=cursor.rowcount)
 
     # Override to prevent error when calling execute without bindings
     def add_query(
