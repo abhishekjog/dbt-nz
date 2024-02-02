@@ -7,7 +7,7 @@
         insert into {{ this.render() }} ({{ cols_sql }})
         select * from external '{{ seed_file_path }}'
         using (
-            REMOTESOURCE 'ODBC'
+            REMOTESOURCE 'PYTHON'
             MAXERRORS 1
             SKIPROWS {{ config.get("skiprows", default="1") }}
             CTRLCHARS {{ config.get("ctrlchars", default="true") }}
