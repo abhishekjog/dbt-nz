@@ -74,6 +74,10 @@ class NetezzaConnectionManager(connection_cls):
         try:
             yield
 
+        except nzpy.core.ProgrammingError as e:
+            logger.error("NZ backend responded with: {}", str(e))
+            raise DbtRuntimeError(str(e)) from e
+        
         except nzpy.DatabaseError as e:
             logger.debug("Netezza error: {}", str(e))
             try:
@@ -83,6 +87,7 @@ class NetezzaConnectionManager(connection_cls):
 
             _, error_message = e.args
             raise DbtDatabaseError(error_message) from e
+        
 
         except Exception as e:
             logger.debug("Error running SQL: {}", sql)
