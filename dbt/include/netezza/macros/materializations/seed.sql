@@ -8,24 +8,8 @@
         insert into {{ this.render() }} ({{ cols_sql }})
         select * from external '{{ seed_file_path }}'
         using (
-<<<<<<< Updated upstream
-            REMOTESOURCE 'ODBC'
-            MAXERRORS 1
-            SKIPROWS {{ config.get("skiprows", default="1") }}
-            CTRLCHARS {{ config.get("ctrlchars", default="true") }}
-            QUOTEDVALUE {{ config.get("quotedvalue", default="Double") }}
-            NULLVALUE '{{ config.get("nullvalue", default="") }}'
-            DELIMITER '{{ config.get("delimiter", default=",") }}'
-            DATEDELIM '{{ config.get("datedelim", default="-") }}'
-            TIMEDELIM '{{ config.get("timedelim", default=":") }}'
-            DATETIMEDELIM '{{ config.get("datetimedelim", default="T") }}'
-            BOOLSTYLE {{ config.get("boolstyle", default="1_0") }}
-            DATESTYLE {{ config.get("datestyle", default="YMD") }}
-            TIMESTYLE {{ config.get("timestyle", default="24HOUR") }}
-=======
             REMOTESOURCE 'PYTHON'
             {{ et_options }}
->>>>>>> Stashed changes
         )
     {% endset %}
 

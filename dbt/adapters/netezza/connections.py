@@ -14,7 +14,8 @@ from dbt.events.functions import fire_event
 from dbt.events.types import ConnectionUsed, SQLQuery, SQLQueryStatus
 from dbt.contracts.connection import Connection, AdapterResponse
 from dbt.helper_types import Port
-import pyodbc
+import nzpy
+
 
 logger = AdapterLogger("Netezza")
 
@@ -73,19 +74,15 @@ class NetezzaConnectionManager(connection_cls):
         try:
             yield
 
-<<<<<<< Updated upstream
-        except pyodbc.DatabaseError as e:
-=======
         except nzpy.core.ProgrammingError as e:
             logger.error("NZ backend responded with: {}", str(e))
             raise DbtRuntimeError(str(e)) from e
         
         except nzpy.DatabaseError as e:
->>>>>>> Stashed changes
             logger.debug("Netezza error: {}", str(e))
             try:
                 self.rollback_if_open()
-            except pyodbc.DatabaseError:
+            except nzpy.DatabaseError:
                 logger.error("Failed to release connection!")
 
             _, error_message = e.args
@@ -115,30 +112,28 @@ class NetezzaConnectionManager(connection_cls):
             return connection
 
         credentials = cls.get_credentials(connection.credentials)
-
+        
         connection_args = {}
         if credentials.dsn:
             connection_args = {"DSN": credentials.dsn}
         else:
             connection_args = {
-                "DRIVER": "NetezzaSQL",
-                "SERVER": credentials.host,
-                "PORT": credentials.port,
-                "DATABASE": credentials.database,
-                "SCHEMA": credentials.schema,
+                "host": credentials.host,
+                "port": credentials.port,
+                "database": credentials.database,
+               # "schema": credentials.schema,
             }
 
         def connect():
-            handle = pyodbc.connect(
-                UID=credentials.username,
-                PWD=credentials.password,
-                autocommit=True,
+            handle = nzpy.connect(
+                user=credentials.username,
+                password=credentials.password,
                 **connection_args,
             )
             return handle
 
         retryable_exceptions = [
-            pyodbc.OperationalError,
+            nzpy.OperationalError,
         ]
 
         return cls.retry_connection(
@@ -159,18 +154,16 @@ class NetezzaConnectionManager(connection_cls):
     def get_credentials(cls, credentials):
         return credentials
 
+    
     @classmethod
-    def get_response(cls, cursor) -> AdapterResponse:
+    def get_response(cls, cursor) -> AdapterResponse: 
         """
         Gets a cursor object and returns adapter-specific information
         about the last executed command generally a AdapterResponse object
         that has items such as code, rows_affected, etc. can also just be a string ex. "OK"
         if your cursor does not offer rich metadata.
         """
-        if not len(cursor.messages):
-            return AdapterResponse("OK", rows_affected=cursor.rowcount)
-        last_code, last_message = cursor.messages[-1]
-        return AdapterResponse(last_message, last_code, cursor.rowcount)
+        return AdapterResponse("OK", rows_affected=cursor.rowcount)
 
     # Override to prevent error when calling execute without bindings
     def add_query(
@@ -204,8 +197,8 @@ class NetezzaConnectionManager(connection_cls):
 
             # Get the result of the first non-empty result set (if any)
             while cursor.description is None:
-                if not cursor.nextset():
-                    break
+               # if not cursor.nextset():
+                break
             fire_event(
                 SQLQueryStatus(
                     status=str(self.get_response(cursor)),
@@ -239,12 +232,12 @@ class NetezzaConnectionManager(connection_cls):
         if fetch:
             # Get the result of the first non-empty result set (if any)
             while cursor.description is None:
-                if not cursor.nextset():
-                    break
+               # if not cursor.nextset():
+                break
             table = self.get_result_from_cursor(cursor)
         else:
             table = agate_helper.empty_table()
         # Step through all result sets so we process all errors
-        while cursor.nextset():
-            pass
+       # while cursor.nextset():
+       #     pass
         return response, table
