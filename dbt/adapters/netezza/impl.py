@@ -8,6 +8,7 @@ from dbt.adapters.base.impl import ConstraintSupport
 from dbt.adapters.base.relation import BaseRelation
 from dbt.adapters.netezza import NetezzaConnectionManager
 from dbt.adapters.netezza.column import NetezzaColumn
+from dbt.adapters.netezza.et_options_parser import get_et_options_as_string
 from dbt.adapters.netezza.relation import NetezzaRelation
 from dbt.adapters.protocol import AdapterConfig
 from dbt.adapters.sql.impl import SQLAdapter, LIST_RELATIONS_MACRO_NAME
@@ -167,6 +168,10 @@ class NetezzaAdapter(SQLAdapter):
     @available
     def get_seed_file_path(self, model) -> str:
         return os.path.join(model["root_path"], model["original_file_path"])
+    
+    @available
+    def get_et_options(self, model) -> str:
+        return get_et_options_as_string(os.path.join(model["root_path"], "et_options.yml"))
 
     # Override to change the default value of quote_columns to False
     # Source: https://github.com/dbt-labs/dbt-core/blob/7f8d9a7af976f640e376900773a0d793acf3a3ce/core/dbt/adapters/base/impl.py#L812-L828
