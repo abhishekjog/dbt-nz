@@ -1,10 +1,14 @@
 import agate
+from datetime import datetime
 from dataclasses import dataclass
 import os
-from typing import Optional, List, Dict
+import pytz
+from typing import Optional, List, Dict, Tuple, Any, Union
 
+from dbt import deprecations
+from dbt.adapters.base.connections import AdapterResponse
 from dbt.adapters.base.meta import available
-from dbt.adapters.base.impl import ConstraintSupport
+from dbt.adapters.base.impl import ConstraintSupport,_utc
 from dbt.adapters.base.relation import BaseRelation
 from dbt.adapters.netezza import NetezzaConnectionManager
 from dbt.adapters.netezza.column import NetezzaColumn
@@ -13,9 +17,10 @@ from dbt.adapters.netezza.relation import NetezzaRelation
 from dbt.adapters.protocol import AdapterConfig
 from dbt.adapters.sql.impl import SQLAdapter, LIST_RELATIONS_MACRO_NAME
 from dbt.contracts.graph.manifest import Manifest
-from dbt.exceptions import CompilationError, DbtDatabaseError
-from dbt.utils import filter_null_values
+from dbt.exceptions import CompilationError, DbtDatabaseError, MacroResultError
+from dbt.utils import filter_null_values,AttrDict
 from dbt.contracts.graph.nodes import ConstraintType
+from dateutil import parser
 
 
 @dataclass
@@ -23,6 +28,7 @@ class NetezzaConfig(AdapterConfig):
     dist: Optional[str] = None
 
 
+FRESHNESS_MACRO_NAME = "collect_freshness"
 class NetezzaAdapter(SQLAdapter):
     AdapterSpecificConfigs = NetezzaConfig
     ConnectionManager = NetezzaConnectionManager
@@ -124,7 +130,7 @@ class NetezzaAdapter(SQLAdapter):
     # `drop view if exists`
     def drop_relation(self, relation):
         if relation.type == "view":
-            identifier = relation.identifier.upper()
+            identifier = relation.identifier
             relations = self.list_relations_without_caching(relation)
             no_relation_exists = (
                 next(
@@ -134,7 +140,6 @@ class NetezzaAdapter(SQLAdapter):
                 )
                 is None
             )
-
             if no_relation_exists:
                 return
 
@@ -212,3 +217,50 @@ class NetezzaAdapter(SQLAdapter):
         Not used to validate custom strategies defined by end users.
         """
         return ["merge", "delete+insert"]
+    
+    # For checking the freshness , converting the str type object returned from netezza relation to datetime
+    def calculate_freshness(
+        self,
+        source: BaseRelation,
+        loaded_at_field: str,
+        filter: Optional[str],
+        manifest: Optional[Manifest] = None,
+    ) -> Tuple[Optional[AdapterResponse], Dict[str, Any]]:
+        """Calculate the freshness of sources in dbt, and return it"""
+        kwargs: Dict[str, Any] = {
+            "source": source,
+            "loaded_at_field": loaded_at_field,
+            "filter": filter,
+        }
+        # run the macro
+        # in older versions of dbt-core, the 'collect_freshness' macro returned the table of results directly
+        # starting in v1.5, by default, we return both the table and the adapter response (metadata about the query)
+        result: Union[
+            AttrDict,  # current: contains AdapterResponse + agate.Table
+            agate.Table,  # previous: just table
+        ]
+        result = self.execute_macro(FRESHNESS_MACRO_NAME, kwargs=kwargs, manifest=manifest)
+        if isinstance(result, agate.Table):
+            deprecations.warn("collect-freshness-return-signature")
+            adapter_response = None
+            table = result
+        else:
+            adapter_response, table = result.response, result.table  # type: ignore[attr-defined]
+        # now we have a 1-row table of the maximum `loaded_at_field` value and
+        # the current time according to the db.
+        if len(table) != 1 or len(table[0]) != 2:
+            raise MacroResultError(FRESHNESS_MACRO_NAME, table)
+        if table[0][0] is None:
+            # no records in the table, so really the max_loaded_at was
+            # infinitely long ago. Just call it 0:00 January 1 year UTC
+            max_loaded_at = datetime(1, 1, 1, 0, 0, 0, tzinfo=pytz.UTC)
+        else:
+            max_loaded_at = _utc(parser.parse(table[0][0]), source, loaded_at_field)
+        snapshotted_at = _utc(parser.parse(table[0][1]), source, loaded_at_field)
+        age = (snapshotted_at - max_loaded_at).total_seconds()
+        freshness = {
+            "max_loaded_at": max_loaded_at,
+            "snapshotted_at": snapshotted_at,
+            "age": age,
+        }
+        return adapter_response, freshness
