@@ -84,3 +84,4 @@ class NetezzaInformationSchema(InformationSchema):
             quote_policy=quote_policy,
             information_schema_view=information_schema_view,
         )
+    

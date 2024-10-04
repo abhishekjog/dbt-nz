@@ -1,8 +1,10 @@
+import os
+
+import pytz
 import agate
+from dateutil import parser
 from datetime import datetime
 from dataclasses import dataclass
-import os
-import pytz
 from typing import Optional, List, Dict, Tuple, Any, Union
 
 from dbt import deprecations
@@ -18,17 +20,15 @@ from dbt.adapters.protocol import AdapterConfig
 from dbt.adapters.sql.impl import SQLAdapter, LIST_RELATIONS_MACRO_NAME
 from dbt.contracts.graph.manifest import Manifest
 from dbt.exceptions import CompilationError, DbtDatabaseError, MacroResultError
-from dbt.utils import filter_null_values,AttrDict
+from dbt.utils import filter_null_values, AttrDict
 from dbt.contracts.graph.nodes import ConstraintType
-from dateutil import parser
-
 
 @dataclass
 class NetezzaConfig(AdapterConfig):
     dist: Optional[str] = None
 
 
-FRESHNESS_MACRO_NAME = "collect_freshness"
+FRESHNESS_MACRO_NAME = "collect_freshness" # Macro used to analyze the freshness of the data imports in tables
 class NetezzaAdapter(SQLAdapter):
     AdapterSpecificConfigs = NetezzaConfig
     ConnectionManager = NetezzaConnectionManager
