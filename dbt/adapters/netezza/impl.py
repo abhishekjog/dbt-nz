@@ -10,7 +10,7 @@ from typing import Optional, List, Dict, Tuple, Any, Union
 from dbt import deprecations
 from dbt.adapters.base.connections import AdapterResponse
 from dbt.adapters.base.meta import available
-from dbt.adapters.base.impl import ConstraintSupport,_utc
+from dbt.adapters.base.impl import ConstraintSupport, _utc
 from dbt.adapters.base.relation import BaseRelation
 from dbt.adapters.netezza import NetezzaConnectionManager
 from dbt.adapters.netezza.column import NetezzaColumn
