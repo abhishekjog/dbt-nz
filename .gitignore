@@ -129,3 +129,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+#Sample Project
+dbtnzsampleproject/target/
+dbtnzsampleproject/dbt_packages/
+dbtnzsampleproject/logs/
+dbtnzsampleproject/DS_Store
