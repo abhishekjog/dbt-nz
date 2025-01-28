@@ -30,6 +30,9 @@ class NetezzaConfig(AdapterConfig):
 
 FRESHNESS_MACRO_NAME = "collect_freshness" # Macro used to analyze the freshness of the data imports in tables
 class NetezzaAdapter(SQLAdapter):
+    INT_MIN32 = -2147483648
+    INT_MAX32 = 2147483648
+
     AdapterSpecificConfigs = NetezzaConfig
     ConnectionManager = NetezzaConnectionManager
     Relation = NetezzaRelation
@@ -173,7 +176,7 @@ class NetezzaAdapter(SQLAdapter):
     @available
     def get_seed_file_path(self, model) -> str:
         return os.path.join(model["root_path"], model["original_file_path"])
-    
+
     @available
     def get_et_options(self, model) -> str:
         return get_et_options_as_string(os.path.join(model["root_path"], "et_options.yml"))
@@ -217,7 +220,7 @@ class NetezzaAdapter(SQLAdapter):
         Not used to validate custom strategies defined by end users.
         """
         return ["merge", "delete+insert"]
-    
+
     # For checking the freshness , converting the str type object returned from netezza relation to datetime
     def calculate_freshness(
         self,
@@ -264,3 +267,16 @@ class NetezzaAdapter(SQLAdapter):
             "age": age,
         }
         return adapter_response, freshness
+
+    @classmethod
+    def convert_number_type(cls, agate_table: agate.Table, col_idx: int) -> str:
+        # TODO CT-211
+        decimals = agate_table.aggregate(agate.MaxPrecision(col_idx))  # type: ignore[attr-defined]
+        if decimals :
+            return "float8"
+        else :
+            clm = max([row[col_idx] for row in agate_table.rows])
+            if clm >= cls.INT_MIN32 and clm <= cls.INT_MAX32:
+                return "integer"
+            elif clm > cls.INT_MAX32:
+                return "bigint"
